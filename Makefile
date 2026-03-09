@@ -70,14 +70,26 @@ test-cov: ## Tests con cobertura
 
 # ── Scraper ──────────────────────────────────────────
 
-scrape: ## Ejecutar scraper manualmente
-	$(DC_SCRAPER) run --rm scraper python -m src.scraper.main
+scrape-critical: ## Descargar fuentes críticas (JNE, ONPE)
+	$(DC_SCRAPER) run --rm scraper python -m src.scraper.main --task=download-critical
 
-scrape-pdf: ## Procesar PDFs de planes de gobierno
-	$(DC_SCRAPER) run --rm scraper python -m src.scraper.pdf.processor
+scrape-all: ## Descargar TODAS las fuentes
+	$(DC_SCRAPER) run --rm scraper python -m src.scraper.main --task=download-all
 
-scrape-news: ## Scrape noticias
-	$(DC_SCRAPER) run --rm scraper python -m src.scraper.news.aggregator
+scrape-jne-planes: ## Descargar planes de gobierno del JNE
+	$(DC_SCRAPER) run --rm scraper python -m src.scraper.main --task=download-jne-planes
+
+scrape-jne-candidatos: ## Descargar candidatos del JNE
+	$(DC_SCRAPER) run --rm scraper python -m src.scraper.main --task=download-jne-candidatos
+
+scrape-pdfs: ## Extraer texto de PDFs descargados
+	$(DC_SCRAPER) run --rm scraper python -m src.scraper.main --task=process-pdfs
+
+scrape-news: ## Scrape noticias electorales
+	$(DC_SCRAPER) run --rm scraper python -m src.scraper.main --task=news
+
+scrape-shell: ## Shell interactivo en container scraper
+	$(DC_SCRAPER) run --rm scraper bash
 
 # ── Database ─────────────────────────────────────────
 

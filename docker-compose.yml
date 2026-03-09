@@ -1,3 +1,5 @@
+name: infovoto
+
 networks:
   infovoto:
     driver: bridge
@@ -55,11 +57,13 @@ services:
     environment:
       - DATABASE_URL=postgresql+asyncpg://infovoto:localdev@postgres:5432/infovoto
       - ENVIRONMENT=development
+      - DOWNLOAD_DIR=/app/data/downloads
     depends_on:
       postgres:
         condition: service_healthy
     volumes:
       - ../infovoto-scraper/src:/app/src
+      - ../infovoto-scraper/data:/app/data
     networks:
       - infovoto
     profiles:
