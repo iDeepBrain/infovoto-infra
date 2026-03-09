@@ -1,0 +1,100 @@
+networks:
+  infovoto:
+    driver: bridge
+
+volumes:
+  pgdata:
+  redis-data:
+
+services:
+  # ── Core ───────────────────────────────────────────
+
+  gateway:
+    build:
+      context: ../infovoto-gateway
+      dockerfile: Dockerfile
+    ports:
+      - "2080:8080"
+    env_file: .env
+    environment:
+      - DATABASE_URL=postgresql+asyncpg://infovoto:localdev@postgres:5432/infovoto
+      - REDIS_URL=redis://redis:6379/0
+      - ENVIRONMENT=development
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    volumes:
+      - ../infovoto-gateway/src:/app/src
+    networks:
+      - infovoto
+    restart: unless-stopped
+
+  gradio:
+    build:
+      context: ../infovoto-gradio
+      dockerfile: Dockerfile
+    ports:
+      - "2860:7860"
+    environment:
+      - GATEWAY_URL=http://gateway:8080
+    depends_on:
+      - gateway
+    volumes:
+      - ../infovoto-gradio:/app
+    networks:
+      - infovoto
+    restart: unless-stopped
+
+  scraper:
+    build:
+      context: ../infovoto-scraper
+      dockerfile: Dockerfile
+    env_file: .env
+    environment:
+      - DATABASE_URL=postgresql+asyncpg://infovoto:localdev@postgres:5432/infovoto
+      - ENVIRONMENT=development
+    depends_on:
+      postgres:
+        condition: service_healthy
+    volumes:
+      - ../infovoto-scraper/src:/app/src
+    networks:
+      - infovoto
+    profiles:
+      - scraper
+
+  # ── Infra ──────────────────────────────────────────
+
+  postgres:
+    image: pgvector/pgvector:pg16
+    ports:
+      - "2432:5432"
+    environment:
+      POSTGRES_DB: infovoto
+      POSTGRES_USER: infovoto
+      POSTGRES_PASSWORD: localdev
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    networks:
+      - infovoto
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U infovoto"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "2379:6379"
+    volumes:
+      - redis-data:/data
+    networks:
+      - infovoto
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
