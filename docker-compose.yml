@@ -17,25 +17,32 @@ services:
       dockerfile: Dockerfile
     ports:
       - "2080:8080"
-    env_file: .env
+    env_file: ../.env
     environment:
       - DATABASE_URL=postgresql+asyncpg://infovoto:localdev@postgres:5432/infovoto
       - REDIS_URL=redis://redis:6379/0
       - ENVIRONMENT=development
-      # Demo: solo el MCP mock (no requiere DB con datos). Cambiar a MCPs reales cuando estén cargados.
-      - MCP_URLS=http://infovoto-mcp:8080/demo
+      # MCPs activos. Agregar /planes cuando SC-P1 (OCR notebooks) esté completo.
+      # Para demo sin datos: usar solo /demo
+      - MCP_URLS=http://infovoto-mcp:8080/demo,http://infovoto-mcp:8080/planes
     depends_on:
       postgres:
         condition: service_healthy
       redis:
         condition: service_healthy
       infovoto-mcp:
-        condition: service_started
+        condition: service_healthy
     volumes:
       - ../infovoto-gateway/src:/app/src
       - ../infovoto-gateway/tests:/app/tests
     networks:
       - infovoto
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8080/health')"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 15s
     restart: unless-stopped
 
   web:
@@ -49,9 +56,16 @@ services:
       - NEXT_PUBLIC_GATEWAY_URL=http://gateway:8080
     env_file: ../infovoto-web/.env.local
     depends_on:
-      - gateway
+      gateway:
+        condition: service_healthy
     networks:
       - infovoto
+    healthcheck:
+      test: ["CMD", "node", "-e", "require('http').get('http://localhost:3000/', r => process.exit(r.statusCode < 400 ? 0 : 1)).on('error', () => process.exit(1))"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
     restart: unless-stopped
 
   # ── MCP Service (todos los MCPs en 1) ──────────────
@@ -62,23 +76,28 @@ services:
       dockerfile: Dockerfile
     ports:
       - "2900:8080"
-    env_file: .env
+    env_file: ../.env
     environment:
       - DATABASE_URL=postgresql+asyncpg://infovoto:localdev@postgres:5432/infovoto
       - ENVIRONMENT=development
+      # ChromaDB lee desde la misma carpeta donde el scraper escribe
+      - CHROMA_PERSIST_DIR=/app/scraper_data/chroma
     depends_on:
       postgres:
         condition: service_healthy
     volumes:
       - ../infovoto-mcp/src:/app/src
       - ../infovoto-mcp/tests:/app/tests
+      # Datos procesados por el scraper (ChromaDB planes_gobierno, etc.)
+      - ../infovoto-scraper/data:/app/scraper_data:ro
     networks:
       - infovoto
     healthcheck:
-      test: ["CMD-SHELL", "curl -sf http://localhost:8080/health || exit 1"]
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8080/health')"]
       interval: 10s
       timeout: 5s
-      retries: 3
+      retries: 5
+      start_period: 15s
     restart: unless-stopped
 
   # ── Scraper Job (manual trigger) ───────────────────
@@ -87,7 +106,7 @@ services:
     build:
       context: ../infovoto-scraper
       dockerfile: Dockerfile
-    env_file: .env
+    env_file: ../.env
     environment:
       - DATABASE_URL=postgresql+asyncpg://infovoto:localdev@postgres:5432/infovoto
       - ENVIRONMENT=development
@@ -114,13 +133,20 @@ services:
     environment:
       - GATEWAY_URL=http://gateway:8080
     depends_on:
-      - gateway
+      gateway:
+        condition: service_healthy
     volumes:
       - ../infovoto-gradio:/app
     networks:
       - infovoto
     profiles:
       - dev
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:7860/')"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
     restart: unless-stopped
 
   # ── Infra ──────────────────────────────────────────
