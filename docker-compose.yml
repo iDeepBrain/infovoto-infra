@@ -22,7 +22,8 @@ services:
       - DATABASE_URL=postgresql+asyncpg://infovoto:localdev@postgres:5432/infovoto
       - REDIS_URL=redis://redis:6379/0
       - ENVIRONMENT=development
-      - MCP_URLS=http://infovoto-mcp:8080/perfiles,http://infovoto-mcp:8080/planes,http://infovoto-mcp:8080/logistica,http://infovoto-mcp:8080/fiscalizacion,http://infovoto-mcp:8080/financiamiento
+      # Demo: solo el MCP mock (no requiere DB con datos). Cambiar a MCPs reales cuando estén cargados.
+      - MCP_URLS=http://infovoto-mcp:8080/demo
     depends_on:
       postgres:
         condition: service_healthy
@@ -32,6 +33,7 @@ services:
         condition: service_started
     volumes:
       - ../infovoto-gateway/src:/app/src
+      - ../infovoto-gateway/tests:/app/tests
     networks:
       - infovoto
     restart: unless-stopped
@@ -69,8 +71,14 @@ services:
         condition: service_healthy
     volumes:
       - ../infovoto-mcp/src:/app/src
+      - ../infovoto-mcp/tests:/app/tests
     networks:
       - infovoto
+    healthcheck:
+      test: ["CMD-SHELL", "curl -sf http://localhost:8080/health || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
     restart: unless-stopped
 
   # ── Scraper Job (manual trigger) ───────────────────

@@ -58,18 +58,35 @@ ps: ## Estado de servicios
 
 # ── Tests ────────────────────────────────────────────
 
-test: test-gateway ## Alias: testear gateway
+test: test-unit ## Alias: tests unitarios (no requieren servicios)
+
+test-unit: ## Tests unitarios gateway + mcp (no requieren Docker)
+	$(DC) exec gateway pytest tests/ -v --tb=short --ignore=tests/integration --ignore=tests/stress --ignore=tests/eval
+	$(DC) exec infovoto-mcp pytest tests/ -v --tb=short
 
 test-gateway: ## Tests unitarios del gateway
-	$(DC) exec gateway pytest tests/ -v --tb=short
+	$(DC) exec gateway pytest tests/ -v --tb=short --ignore=tests/integration --ignore=tests/stress --ignore=tests/eval
+
+test-mcp: ## Tests unitarios del MCP (incluyendo demo)
+	$(DC) exec infovoto-mcp pytest tests/ -v --tb=short
 
 test-scraper: ## Tests unitarios del scraper
 	$(DC_SCRAPER) run --rm scraper pytest tests/ -v --tb=short
 
-test-all: test-gateway test-scraper ## Testear gateway + scraper
+test-all: test-unit test-scraper ## Tests unitarios gateway + mcp + scraper
+
+test-integration: ## Tests de integración contra el stack corriendo (requiere make up)
+	$(DC) exec gateway pytest tests/integration/ -v --tb=short -s
+
+test-stress: ## Stress test de carga (requiere make up)
+	$(DC) exec gateway pytest tests/stress/ -v --tb=short -s
+
+test-eval: ## Eval pipeline — mide tono, seguridad, comprensión, empatía (requiere GOOGLE_API_KEY)
+	$(DC) exec gateway python -m tests.eval.pipeline --output /tmp/eval_results.json
+	@echo "Resultados en container: /tmp/eval_results.json"
 
 test-cov: ## Tests con cobertura
-	$(DC) exec gateway pytest tests/ -v --cov=src --cov-report=term-missing
+	$(DC) exec gateway pytest tests/ -v --cov=src --cov-report=term-missing --ignore=tests/integration --ignore=tests/stress --ignore=tests/eval
 
 # ── Scraper ──────────────────────────────────────────
 
