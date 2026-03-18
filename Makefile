@@ -13,7 +13,8 @@ DC_DEV = docker compose --profile dev
         test-integration test-stress test-eval test-cov \
         scrape lint migrate shell-gw shell-db \
         clean nuke \
-        git-status git-commit
+        git-status git-commit \
+        env-check
 
 # ── Info ─────────────────────────────────────────────
 
@@ -168,12 +169,14 @@ lint: ## Linter (ruff) en gateway y scraper
 fmt: ## Formatear código (ruff format)
 	$(DC) exec gateway ruff format src/ tests/
 
-health: ## Check health de todos los servicios
-	@echo "Gateway:  $$(curl -s -o /dev/null -w '%{http_code}' http://localhost:2080/health)"
-	@echo "Web:      $$(curl -s -o /dev/null -w '%{http_code}' http://localhost:2300/)"
-	@echo "MCPs:     $$(curl -s -o /dev/null -w '%{http_code}' http://localhost:2900/health)"
-	@echo "Postgres:     $$(docker compose exec postgres pg_isready -U infovoto > /dev/null 2>&1 && echo 'OK' || echo 'DOWN')"
-	@echo "Redis:        $$(docker compose exec redis redis-cli ping 2>/dev/null || echo 'DOWN')"
+health: ## Check health de todos los servicios (Docker healthcheck + HTTP)
+	@_hc() { docker inspect --format='{{.State.Health.Status}}' "infovoto-$$1-1" 2>/dev/null || echo "no-healthcheck"; }; \
+	_http() { curl -s -o /dev/null -w '%{http_code}' "$$1" 2>/dev/null || echo "DOWN"; }; \
+	echo "Gateway:  $$(_http http://localhost:2080/health) [docker: $$(_hc gateway)]"; \
+	echo "MCPs:     $$(_http http://localhost:2900/health) [docker: $$(_hc infovoto-mcp)]"; \
+	echo "Web:      $$(_http http://localhost:2300/) [docker: $$(_hc web)]"; \
+	echo "Postgres: $$(docker compose exec postgres pg_isready -U infovoto > /dev/null 2>&1 && echo 'OK' || echo 'DOWN') [docker: $$(_hc postgres)]"; \
+	echo "Redis:    $$(docker compose exec redis redis-cli ping 2>/dev/null || echo 'DOWN') [docker: $$(_hc redis)]"
 
 logs-web: ## Ver logs del web frontend
 	$(DC) logs -f web
@@ -183,6 +186,11 @@ logs-mcp: ## Ver logs de infovoto-mcp
 
 restart-gateway: ## Restart solo gateway (carga nueva config MCP)
 	$(DC) restart gateway
+
+# ── Env ──────────────────────────────────────────────
+
+env-check: ## Verificar que el .env raíz tiene todas las keys necesarias
+	@bash scripts/env/check-env.sh
 
 # ── Git Global ───────────────────────────────────────
 
