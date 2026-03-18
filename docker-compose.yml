@@ -56,6 +56,7 @@ services:
     environment:
       - NEXTAUTH_URL=http://localhost:2300
       - NEXT_PUBLIC_GATEWAY_URL=http://gateway:8080
+      - HOSTNAME=0.0.0.0
     env_file: ../infovoto-web/.env.local
     depends_on:
       gateway:
@@ -63,7 +64,7 @@ services:
     networks:
       - infovoto
     healthcheck:
-      test: ["CMD", "node", "-e", "require('http').get('http://localhost:3000/', r => process.exit(r.statusCode < 400 ? 0 : 1)).on('error', () => process.exit(1))"]
+      test: ["CMD", "node", "-e", "require('http').get({hostname: require('os').hostname(), port: 3000, path: '/'}, r => process.exit(r.statusCode < 500 ? 0 : 1)).on('error', () => process.exit(1))"]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -93,7 +94,7 @@ services:
       - ../infovoto-mcp/src:/app/src
       - ../infovoto-mcp/tests:/app/tests
       # Datos procesados por el scraper (ChromaDB planes_gobierno, etc.)
-      - ../infovoto-scraper/data:/app/scraper_data:ro
+      - ../infovoto-scraper/data:/app/scraper_data
     networks:
       - infovoto
     healthcheck:
@@ -127,6 +128,27 @@ services:
       - infovoto
     profiles:
       - scraper
+
+  # ── Eval Pipeline (job — docker compose run) ───────
+
+  eval:
+    build:
+      context: ../infovoto-gateway
+      dockerfile: Dockerfile.eval
+    environment:
+      - GATEWAY_URL=http://gateway:8080
+    env_file:
+      - ../.env.secrets
+      - ../.env.config
+    depends_on:
+      gateway:
+        condition: service_healthy
+    volumes:
+      - ../infovoto-gateway/tests:/app/tests
+    networks:
+      - infovoto
+    profiles:
+      - eval
 
   # ── Dev Tools ──────────────────────────────────────
 

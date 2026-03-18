@@ -6,11 +6,13 @@
 DC = docker compose
 DC_SCRAPER = docker compose --profile scraper
 DC_DEV = docker compose --profile dev
+DC_EVAL = docker compose --profile eval
 
 .PHONY: help build up down restart logs ps \
         test test-all \
         test-gateway test-mcp test-scraper test-web test-gradio \
         test-integration test-stress test-eval test-cov \
+        eval-stress eval-adversarial eval-build \
         scrape lint migrate shell-gw shell-db \
         clean nuke \
         git-status git-commit \
@@ -24,10 +26,10 @@ help: ## Mostrar esta ayuda
 
 # ── Build & Run ──────────────────────────────────────
 
-build: ## Buildear todas las imágenes
-	$(DC_SCRAPER) build
+build: ## Buildear imágenes del stack principal (gateway + web + mcp)
+	$(DC) build
 
-up: ## Levantar gateway + web + infovoto-mcp + postgres + redis
+up: ## Levantar stack completo (gateway + web + mcp + postgres + redis)
 	$(DC) up -d
 	@echo "\n  Gateway:  http://localhost:2080"
 	@echo "  Web:      http://localhost:2300"
@@ -35,17 +37,17 @@ up: ## Levantar gateway + web + infovoto-mcp + postgres + redis
 	@echo "  Postgres: localhost:2432"
 	@echo "  Redis:    localhost:2379\n"
 
-up-all: ## Levantar todo incluyendo scraper
-	$(DC_SCRAPER) up -d
+up-dev: ## Levantar stack + gradio (debug UI en localhost:2860)
+	$(DC_DEV) up -d
 
-up-logs: ## Levantar todo con logs en foreground
+up-logs: ## Levantar stack con logs en foreground
 	$(DC) up
 
 down: ## Bajar todos los servicios
-	$(DC_SCRAPER) down
+	$(DC) down
 
-restart: ## Restart gateway + gradio (sin tocar DB)
-	$(DC) restart gateway gradio
+restart: ## Restart gateway (recarga MCP registry y config)
+	$(DC) restart gateway
 
 logs: ## Ver logs de todos los servicios
 	$(DC) logs -f
@@ -60,35 +62,25 @@ ps: ## Estado de servicios
 	$(DC_SCRAPER) ps -a
 
 # ── Tests ────────────────────────────────────────────
-# Niveles:
-#   test-gateway    → unit tests del gateway (sin Docker externo)
-#   test-mcp        → unit tests del MCP demo + tools
-#   test-scraper    → unit tests del scraper
-#   test-web        → build check del frontend Next.js
-#   test-gradio     → smoke test del Gradio (health del endpoint)
-#   test-integration → flujo completo gateway↔mcp (requiere make up)
-#   test-stress     → carga concurrente (requiere make up)
-#   test-eval       → LLM-as-judge: tono, seguridad, comprensión, empatía
-#   test-cov        → cobertura de código del gateway
-#   test            → unit: gateway + mcp (rápido, sin DB real)
-#   test-all        → todo: unit + integration + stress
+# test          → unit: gateway + mcp (rápido, no requiere nada externo)
+# test-gateway  → solo unit tests del gateway
+# test-mcp      → solo unit tests del mcp (5 tools demo + /health + /metadata)
+# test-integration → flujo completo gateway↔mcp (requiere make up)
+# test-all      → unit + integration (requiere make up)
 
 IGNORE_INT = --ignore=tests/integration --ignore=tests/stress --ignore=tests/eval
 
-test: ## Tests unitarios rápidos: gateway + mcp (no requieren datos reales)
+test: ## Unit tests: gateway + mcp (rápido, requiere make up)
 	@echo "\n\033[1m[1/2] Gateway unit tests\033[0m"
 	$(DC) exec gateway pytest tests/ -v --tb=short $(IGNORE_INT)
 	@echo "\n\033[1m[2/2] MCP unit tests\033[0m"
 	$(DC) exec infovoto-mcp pytest tests/ -v --tb=short
 
-test-gateway: ## Unit tests del gateway (models, middleware, agent lógica)
+test-gateway: ## Unit tests del gateway
 	$(DC) exec gateway pytest tests/ -v --tb=short $(IGNORE_INT)
 
-test-mcp: ## Unit tests del MCP: 5 tools demo, endpoints /health y /metadata
+test-mcp: ## Unit tests del mcp (5 tools demo + /health + /metadata)
 	$(DC) exec infovoto-mcp pytest tests/ -v --tb=short
-
-test-scraper: ## Unit tests del scraper (requiere perfil scraper)
-	$(DC_SCRAPER) run --rm scraper pytest tests/ -v --tb=short
 
 test-web: ## Build check del frontend Next.js (detecta errores TypeScript)
 	$(DC) exec web sh -c "npm run build 2>&1 | tail -20" || \
@@ -105,10 +97,18 @@ test-stress: ## Carga concurrente N usuarios (requiere make up, STRESS_USERS=10 
 	$(DC) exec -e STRESS_USERS=$(or $(USERS),10) -e STRESS_REQUESTS=$(or $(REQ),30) \
 		gateway pytest tests/stress/ -v --tb=short -s
 
-test-eval: ## LLM-as-judge: tono/seguridad/comprensión/empatía sobre 10 queries (requiere GOOGLE_API_KEY)
-	$(DC) exec gateway python -m tests.eval.pipeline --output /tmp/eval_results.json
-	@echo "\nResultados guardados en /tmp/eval_results.json (dentro del container)"
-	@echo "Para copiar al host: docker compose cp gateway:/tmp/eval_results.json ."
+test-eval: ## Pipeline completo eval: 105 preguntas + LLM-judge + CSV + gráficos (requiere make up + GOOGLE_API_KEY)
+	$(DC_EVAL) run --rm eval python -m tests.eval.run_eval $(if $(workers),--workers $(workers),)
+	@echo "\nResultados en infovoto-gateway/tests/eval/results/"
+
+eval-stress: ## Solo stress (sin juez LLM) — mide latencia y errores sin gastar tokens
+	$(DC_EVAL) run --rm eval python -m tests.eval.run_eval --no-judge $(if $(workers),--workers $(workers),)
+
+eval-adversarial: ## Solo categoría adversarial, 1 worker — detecta vulnerabilidades de seguridad
+	$(DC_EVAL) run --rm eval python -m tests.eval.run_eval --category adversarial --workers 1
+
+eval-build: ## Buildear imagen del pipeline de evaluación
+	$(DC_EVAL) build eval
 
 test-cov: ## Gateway con cobertura de código (HTML + terminal)
 	$(DC) exec gateway pytest tests/ -v --cov=src --cov-report=term-missing --cov-report=html:/tmp/htmlcov \

@@ -1,0 +1,39 @@
+# Secretos y credenciales
+.env
+.env.*
+!.env.example
+!.env.*.example
+
+# Datos binarios pesados
+data/raw/
+data/processed/
+data/chroma/
+*.pdf
+*.csv
+*.xlsx
+*.parquet
+*.db
+*.sqlite
+
+# Dependencias
+.venv/
+node_modules/
+__pycache__/
+*.py[cod]
+
+# Build
+.next/
+dist/
+build/
+*.egg-info/
+
+# Llaves y certificados
+*.pem
+*.key
+*.p12
+*credentials*.json
+*service_account*.json
+
+# OS / IDE
+.DS_Store
+.idea/
