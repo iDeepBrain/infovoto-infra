@@ -13,7 +13,8 @@ DC_EVAL = docker compose --profile eval
         test-gateway test-mcp test-scraper test-web test-gradio \
         test-integration test-stress test-eval test-cov \
         eval-stress eval-adversarial eval-build \
-        scrape lint migrate shell-gw shell-db \
+        scrape lint migrate shell-gw shell-db shell-redis \
+        cache-flush cache-flush-all \
         clean nuke \
         git-status git-commit \
         env-check env-sync
@@ -98,11 +99,11 @@ test-stress: ## Carga concurrente N usuarios (requiere make up, STRESS_USERS=10 
 		gateway pytest tests/stress/ -v --tb=short -s
 
 test-eval: ## Pipeline completo eval: 105 preguntas + LLM-judge + CSV + gráficos (requiere make up + GOOGLE_API_KEY)
-	$(DC_EVAL) run --rm eval python -m tests.eval.run_eval $(if $(workers),--workers $(workers),)
+	$(DC_EVAL) run --rm eval python -m tests.eval.run_eval --workers $(or $(workers),2)
 	@echo "\nResultados en infovoto-gateway/tests/eval/results/"
 
 eval-stress: ## Solo stress (sin juez LLM) — mide latencia y errores sin gastar tokens
-	$(DC_EVAL) run --rm eval python -m tests.eval.run_eval --no-judge $(if $(workers),--workers $(workers),)
+	$(DC_EVAL) run --rm eval python -m tests.eval.run_eval --no-judge --workers $(or $(workers),3)
 
 eval-adversarial: ## Solo categoría adversarial, 1 worker — detecta vulnerabilidades de seguridad
 	$(DC_EVAL) run --rm eval python -m tests.eval.run_eval --category adversarial --workers 1
@@ -154,6 +155,14 @@ shell-db: ## Abrir psql en postgres
 shell-redis: ## Abrir redis-cli
 	$(DC) exec redis redis-cli
 
+cache-flush: ## Borrar solo cache de queries LLM (mantiene sesiones de usuario)
+	$(DC) exec redis redis-cli --scan --pattern "cache:query:*" | xargs -r $(DC) exec -T redis redis-cli DEL
+	@echo "Cache de queries limpiado"
+
+cache-flush-all: ## Borrar TODO el cache Redis (queries + sesiones)
+	$(DC) exec redis redis-cli FLUSHDB
+	@echo "Redis vaciado completamente"
+
 # ── Dev Utilities ────────────────────────────────────
 
 shell-gw: ## Shell dentro del container gateway
@@ -162,9 +171,9 @@ shell-gw: ## Shell dentro del container gateway
 shell-scraper: ## Shell dentro del container scraper
 	$(DC_SCRAPER) run --rm scraper bash
 
-lint: ## Linter (ruff) en gateway y scraper
+lint: ## Linter (ruff) en gateway y mcp
 	$(DC) exec gateway ruff check src/ tests/
-	$(DC_SCRAPER) run --rm scraper ruff check src/ tests/
+	$(DC) exec infovoto-mcp ruff check src/ tests/ 2>/dev/null || echo "  [mcp] ruff no disponible en imagen"
 
 fmt: ## Formatear código (ruff format)
 	$(DC) exec gateway ruff format src/ tests/

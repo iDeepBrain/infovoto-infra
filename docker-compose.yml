@@ -37,6 +37,8 @@ services:
     volumes:
       - ../infovoto-gateway/src:/app/src
       - ../infovoto-gateway/tests:/app/tests
+      - ../infovoto-gateway/migrations:/app/migrations
+      - ../infovoto-gateway/alembic.ini:/app/alembic.ini
     networks:
       - infovoto
     healthcheck:
