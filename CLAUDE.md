@@ -1,35 +1,67 @@
 # infovoto-infra
 
-Docker Compose + Makefile for local dev orchestration. No GCP deployment.
+Docker Compose + Makefile para orquestación local. Scripts globales de operación. Sin deploy a GCP.
 
-## Commands
+## Comandos docker-compose
+
 ```bash
-make up        # start gateway + web + infovoto-mcp + postgres + redis
-make down      # stop all services
-make build     # rebuild all images
-make health    # check all service health endpoints
-make test      # gateway tests
-make test-all  # gateway + scraper tests
-make migrate   # run Alembic migrations
-make shell-db  # psql into postgres
-make shell-gw  # bash into gateway container
-make scrape    # run scraper job
-make help      # list all targets
+make up           # gateway + web + infovoto-mcp + postgres + redis
+make down         # bajar todos los servicios
+make build        # rebuild todas las imágenes
+make health       # check health de todos los servicios
+make test         # tests del gateway
+make test-all     # tests gateway + scraper
+make migrate      # correr migraciones Alembic
+make shell-db     # psql en postgres
+make shell-gw     # bash en gateway
+make help         # listar todos los targets
 ```
 
-## Local Ports (2xxx range)
-| Service      | Local  | Container |
-|-------------|--------|-----------|
-| gateway     | 2080   | 8080      |
-| web         | 2300   | 3000      |
-| infovoto-mcp| 2900   | 8080      |
-| postgres    | 2432   | 5432      |
-| redis       | 2379   | 6379      |
+## Scripts globales de git
+
+```bash
+make git-status              # estado de todos los repos
+make git-commit m="mensaje"  # commitea y pushea todos los repos con cambios
+```
+
+Scripts en `scripts/git/` — solo locales, nunca en GCP.
+
+## Estructura de scripts
+
+```
+scripts/
+├── git/
+│   ├── status-all.sh
+│   └── commit-all.sh
+├── gcp/     # (futuro) deploy, cloud run, secrets
+└── db/      # (futuro) migraciones, backups, seeds
+```
+
+## Puertos locales (rango 2xxx)
+
+| Servicio     | Local | Container |
+|-------------|-------|-----------|
+| gateway     | 2080  | 8080      |
+| web         | 2300  | 3000      |
+| infovoto-mcp| 2900  | 8080      |
+| postgres    | 2432  | 5432      |
+| redis       | 2379  | 6379      |
+| gradio      | 2860  | 7860      |
 
 ## Docker Compose Profiles
-- default — gateway, web, infovoto-mcp, postgres, redis
-- `scraper` — adds scraper batch job container
-- `dev` — adds gradio container (port 2860)
 
-## Key Rule
-NEVER commit `.env` — only `.env.example` is committed.
+- default — gateway, web, infovoto-mcp, postgres, redis
+- `scraper` — agrega scraper batch job
+- `dev` — agrega gradio (puerto 2860)
+
+## Git (CRÍTICO)
+
+- SSH: `github.com-personal` (NUNCA `github.com` — esa es de marvik)
+- User: `CristianLazoQuispe` / Email: `mecatronico.lazo@gmail.com`
+- Org: `iDeepBrain`
+- Remote: `git@github.com-personal:iDeepBrain/infovoto-infra.git`
+
+## Reglas .gitignore
+
+NUNCA commitear: `.env`, `*.pem`, `*.key`, `*.p12`, `*credentials*.json`, `*service_account*.json`, `*.pdf`, `*.csv`, `*.xlsx`, `*.xls`, `*.parquet`, `*.db`, `*.sqlite`.
+Solo commitear `.env.example` (sin valores reales).

@@ -10,7 +10,8 @@ DC_DEV = docker compose --profile dev
 .PHONY: help build up down restart logs ps \
         test test-gateway test-scraper test-all \
         scrape lint migrate shell-gw shell-db \
-        clean nuke
+        clean nuke \
+        git-status git-commit
 
 # ── Info ─────────────────────────────────────────────
 
@@ -137,6 +138,14 @@ logs-mcp: ## Ver logs de infovoto-mcp
 
 restart-gateway: ## Restart solo gateway (carga nueva config MCP)
 	$(DC) restart gateway
+
+# ── Git Global ───────────────────────────────────────
+
+git-status: ## Ver estado de todos los repos
+	@bash scripts/git/status-all.sh
+
+git-commit: ## Commitear y pushear todos los repos (usar: make git-commit m="mensaje")
+	@bash scripts/git/commit-all.sh "$(m)"
 
 # ── Cleanup ──────────────────────────────────────────
 
