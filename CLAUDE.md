@@ -1,23 +1,35 @@
 # infovoto-infra
 
-Orquestador local de InfoVoto Perú 2026. Docker Compose + Makefile + scripts GCP.
+Docker Compose + Makefile for local dev orchestration. No GCP deployment.
 
-## Comandos
-- `make up` — Levantar gateway + gradio + postgres + redis
-- `make build` — Buildear todas las imágenes
-- `make test` — Tests del gateway
-- `make test-all` — Tests gateway + scraper
-- `make down` — Bajar servicios
-- `make help` — Ver todos los comandos
+## Commands
+```bash
+make up        # start gateway + web + infovoto-mcp + postgres + redis
+make down      # stop all services
+make build     # rebuild all images
+make health    # check all service health endpoints
+make test      # gateway tests
+make test-all  # gateway + scraper tests
+make migrate   # run Alembic migrations
+make shell-db  # psql into postgres
+make shell-gw  # bash into gateway container
+make scrape    # run scraper job
+make help      # list all targets
+```
 
-## Puertos locales (rango 2xxx)
-- Gateway: localhost:2080
-- Gradio: localhost:2860
-- Postgres: localhost:2432
-- Redis: localhost:2379
+## Local Ports (2xxx range)
+| Service      | Local  | Container |
+|-------------|--------|-----------|
+| gateway     | 2080   | 8080      |
+| web         | 2300   | 3000      |
+| infovoto-mcp| 2900   | 8080      |
+| postgres    | 2432   | 5432      |
+| redis       | 2379   | 6379      |
 
-## Reglas
-- SIEMPRE usar github.com-personal para SSH (NUNCA github.com)
-- Git user: CristianLazoQuispe / mecatronico.lazo@gmail.com
-- Organización: iDeepBrain
-- NUNCA commitear .env (solo .env.example)
+## Docker Compose Profiles
+- default — gateway, web, infovoto-mcp, postgres, redis
+- `scraper` — adds scraper batch job container
+- `dev` — adds gradio container (port 2860)
+
+## Key Rule
+NEVER commit `.env` — only `.env.example` is committed.

@@ -1,10 +1,11 @@
 # ─────────────────────────────────────────────────────
 # InfoVoto Perú 2026 — Makefile
 # ─────────────────────────────────────────────────────
-# Puertos: gateway=2080 gradio=2860 postgres=2432 redis=2379
+# Puertos: gateway=2080 web=2300 mcp=2900 postgres=2432 redis=2379
 
 DC = docker compose
 DC_SCRAPER = docker compose --profile scraper
+DC_DEV = docker compose --profile dev
 
 .PHONY: help build up down restart logs ps \
         test test-gateway test-scraper test-all \
@@ -22,12 +23,13 @@ help: ## Mostrar esta ayuda
 build: ## Buildear todas las imágenes
 	$(DC_SCRAPER) build
 
-up: ## Levantar gateway + gradio + postgres + redis
+up: ## Levantar gateway + web + infovoto-mcp + postgres + redis
 	$(DC) up -d
-	@echo "\n  Gateway: http://localhost:2080"
-	@echo "  Gradio:  http://localhost:2860"
+	@echo "\n  Gateway:  http://localhost:2080"
+	@echo "  Web:      http://localhost:2300"
+	@echo "  MCPs:     http://localhost:2900"
 	@echo "  Postgres: localhost:2432"
-	@echo "  Redis:   localhost:2379\n"
+	@echo "  Redis:    localhost:2379\n"
 
 up-all: ## Levantar todo incluyendo scraper
 	$(DC_SCRAPER) up -d
@@ -122,9 +124,19 @@ fmt: ## Formatear código (ruff format)
 
 health: ## Check health de todos los servicios
 	@echo "Gateway:  $$(curl -s -o /dev/null -w '%{http_code}' http://localhost:2080/health)"
-	@echo "Gradio:   $$(curl -s -o /dev/null -w '%{http_code}' http://localhost:2860/)"
-	@echo "Postgres: $$(docker compose exec postgres pg_isready -U infovoto > /dev/null 2>&1 && echo 'OK' || echo 'DOWN')"
-	@echo "Redis:    $$(docker compose exec redis redis-cli ping 2>/dev/null || echo 'DOWN')"
+	@echo "Web:      $$(curl -s -o /dev/null -w '%{http_code}' http://localhost:2300/)"
+	@echo "MCPs:     $$(curl -s -o /dev/null -w '%{http_code}' http://localhost:2900/health)"
+	@echo "Postgres:     $$(docker compose exec postgres pg_isready -U infovoto > /dev/null 2>&1 && echo 'OK' || echo 'DOWN')"
+	@echo "Redis:        $$(docker compose exec redis redis-cli ping 2>/dev/null || echo 'DOWN')"
+
+logs-web: ## Ver logs del web frontend
+	$(DC) logs -f web
+
+logs-mcp: ## Ver logs de infovoto-mcp
+	$(DC) logs -f infovoto-mcp
+
+restart-gateway: ## Restart solo gateway (carga nueva config MCP)
+	$(DC) restart gateway
 
 # ── Cleanup ──────────────────────────────────────────
 

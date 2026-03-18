@@ -22,32 +22,58 @@ services:
       - DATABASE_URL=postgresql+asyncpg://infovoto:localdev@postgres:5432/infovoto
       - REDIS_URL=redis://redis:6379/0
       - ENVIRONMENT=development
+      - MCP_URLS=http://infovoto-mcp:8080/perfiles,http://infovoto-mcp:8080/planes,http://infovoto-mcp:8080/logistica,http://infovoto-mcp:8080/fiscalizacion,http://infovoto-mcp:8080/financiamiento
     depends_on:
       postgres:
         condition: service_healthy
       redis:
         condition: service_healthy
+      infovoto-mcp:
+        condition: service_started
     volumes:
       - ../infovoto-gateway/src:/app/src
     networks:
       - infovoto
     restart: unless-stopped
 
-  gradio:
+  web:
     build:
-      context: ../infovoto-gradio
+      context: ../infovoto-web
       dockerfile: Dockerfile
     ports:
-      - "2860:7860"
+      - "2300:3000"
     environment:
-      - GATEWAY_URL=http://gateway:8080
+      - NEXTAUTH_URL=http://localhost:2300
+      - NEXT_PUBLIC_GATEWAY_URL=http://gateway:8080
+    env_file: ../infovoto-web/.env.local
     depends_on:
       - gateway
-    volumes:
-      - ../infovoto-gradio:/app
     networks:
       - infovoto
     restart: unless-stopped
+
+  # ── MCP Service (todos los MCPs en 1) ──────────────
+
+  infovoto-mcp:
+    build:
+      context: ../infovoto-mcp
+      dockerfile: Dockerfile
+    ports:
+      - "2900:8080"
+    env_file: .env
+    environment:
+      - DATABASE_URL=postgresql+asyncpg://infovoto:localdev@postgres:5432/infovoto
+      - ENVIRONMENT=development
+    depends_on:
+      postgres:
+        condition: service_healthy
+    volumes:
+      - ../infovoto-mcp/src:/app/src
+    networks:
+      - infovoto
+    restart: unless-stopped
+
+  # ── Scraper Job (manual trigger) ───────────────────
 
   scraper:
     build:
@@ -68,6 +94,26 @@ services:
       - infovoto
     profiles:
       - scraper
+
+  # ── Dev Tools ──────────────────────────────────────
+
+  gradio:
+    build:
+      context: ../infovoto-gradio
+      dockerfile: Dockerfile
+    ports:
+      - "2860:7860"
+    environment:
+      - GATEWAY_URL=http://gateway:8080
+    depends_on:
+      - gateway
+    volumes:
+      - ../infovoto-gradio:/app
+    networks:
+      - infovoto
+    profiles:
+      - dev
+    restart: unless-stopped
 
   # ── Infra ──────────────────────────────────────────
 
