@@ -1,0 +1,26 @@
+# Gitleaks — reglas extra para InfoVoto
+# Las reglas base ya detectan: AWS, GCP, GitHub tokens, Slack, etc.
+# Solo agregamos allowlist para no bloquear valores de ejemplo.
+
+title = "InfoVoto Gitleaks Config"
+
+[extend]
+useDefault = true
+
+[[rules]]
+id = "google-api-key-hardcoded"
+description = "Google API key hardcodeada"
+regex = '''AIza[0-9A-Za-z\-_]{35}'''
+tags = ["google", "api-key"]
+
+[allowlist]
+description = "Ignorar placeholders y archivos de ejemplo"
+regexes = [
+  '''your[-_].*[-_]here''',
+  '''placeholder''',
+  '''localdev''',
+]
+paths = [
+  '''\.env\.example''',
+  '''\.env\..+\.example''',
+]

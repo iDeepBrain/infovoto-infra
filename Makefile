@@ -8,7 +8,9 @@ DC_SCRAPER = docker compose --profile scraper
 DC_DEV = docker compose --profile dev
 
 .PHONY: help build up down restart logs ps \
-        test test-gateway test-scraper test-all \
+        test test-all \
+        test-gateway test-mcp test-scraper test-web test-gradio \
+        test-integration test-stress test-eval test-cov \
         scrape lint migrate shell-gw shell-db \
         clean nuke \
         git-status git-commit
@@ -57,36 +59,62 @@ ps: ## Estado de servicios
 	$(DC_SCRAPER) ps -a
 
 # ── Tests ────────────────────────────────────────────
+# Niveles:
+#   test-gateway    → unit tests del gateway (sin Docker externo)
+#   test-mcp        → unit tests del MCP demo + tools
+#   test-scraper    → unit tests del scraper
+#   test-web        → build check del frontend Next.js
+#   test-gradio     → smoke test del Gradio (health del endpoint)
+#   test-integration → flujo completo gateway↔mcp (requiere make up)
+#   test-stress     → carga concurrente (requiere make up)
+#   test-eval       → LLM-as-judge: tono, seguridad, comprensión, empatía
+#   test-cov        → cobertura de código del gateway
+#   test            → unit: gateway + mcp (rápido, sin DB real)
+#   test-all        → todo: unit + integration + stress
 
-test: test-unit ## Alias: tests unitarios (no requieren servicios)
+IGNORE_INT = --ignore=tests/integration --ignore=tests/stress --ignore=tests/eval
 
-test-unit: ## Tests unitarios gateway + mcp (no requieren Docker)
-	$(DC) exec gateway pytest tests/ -v --tb=short --ignore=tests/integration --ignore=tests/stress --ignore=tests/eval
+test: ## Tests unitarios rápidos: gateway + mcp (no requieren datos reales)
+	@echo "\n\033[1m[1/2] Gateway unit tests\033[0m"
+	$(DC) exec gateway pytest tests/ -v --tb=short $(IGNORE_INT)
+	@echo "\n\033[1m[2/2] MCP unit tests\033[0m"
 	$(DC) exec infovoto-mcp pytest tests/ -v --tb=short
 
-test-gateway: ## Tests unitarios del gateway
-	$(DC) exec gateway pytest tests/ -v --tb=short --ignore=tests/integration --ignore=tests/stress --ignore=tests/eval
+test-gateway: ## Unit tests del gateway (models, middleware, agent lógica)
+	$(DC) exec gateway pytest tests/ -v --tb=short $(IGNORE_INT)
 
-test-mcp: ## Tests unitarios del MCP (incluyendo demo)
+test-mcp: ## Unit tests del MCP: 5 tools demo, endpoints /health y /metadata
 	$(DC) exec infovoto-mcp pytest tests/ -v --tb=short
 
-test-scraper: ## Tests unitarios del scraper
+test-scraper: ## Unit tests del scraper (requiere perfil scraper)
 	$(DC_SCRAPER) run --rm scraper pytest tests/ -v --tb=short
 
-test-all: test-unit test-scraper ## Tests unitarios gateway + mcp + scraper
+test-web: ## Build check del frontend Next.js (detecta errores TypeScript)
+	$(DC) exec web sh -c "npm run build 2>&1 | tail -20" || \
+		docker run --rm -v $$(pwd)/../infovoto-web:/app -w /app node:20-alpine sh -c "npm run build 2>&1 | tail -20"
 
-test-integration: ## Tests de integración contra el stack corriendo (requiere make up)
+test-gradio: ## Smoke test Gradio: verifica que responde (requiere make up-dev)
+	@echo "Gradio UI:    $$(curl -s -o /dev/null -w '%{http_code}' http://localhost:2860/)"
+	@echo "Gateway→MCP:  $$(curl -s http://localhost:2900/demo/health | python3 -c \"import sys,json; d=json.load(sys.stdin); print(d['status'])\")"
+
+test-integration: ## Flujo completo: auth → chat → MCP demo → respuesta (requiere make up)
 	$(DC) exec gateway pytest tests/integration/ -v --tb=short -s
 
-test-stress: ## Stress test de carga (requiere make up)
-	$(DC) exec gateway pytest tests/stress/ -v --tb=short -s
+test-stress: ## Carga concurrente N usuarios (requiere make up, STRESS_USERS=10 STRESS_REQUESTS=30)
+	$(DC) exec -e STRESS_USERS=$(or $(USERS),10) -e STRESS_REQUESTS=$(or $(REQ),30) \
+		gateway pytest tests/stress/ -v --tb=short -s
 
-test-eval: ## Eval pipeline — mide tono, seguridad, comprensión, empatía (requiere GOOGLE_API_KEY)
+test-eval: ## LLM-as-judge: tono/seguridad/comprensión/empatía sobre 10 queries (requiere GOOGLE_API_KEY)
 	$(DC) exec gateway python -m tests.eval.pipeline --output /tmp/eval_results.json
-	@echo "Resultados en container: /tmp/eval_results.json"
+	@echo "\nResultados guardados en /tmp/eval_results.json (dentro del container)"
+	@echo "Para copiar al host: docker compose cp gateway:/tmp/eval_results.json ."
 
-test-cov: ## Tests con cobertura
-	$(DC) exec gateway pytest tests/ -v --cov=src --cov-report=term-missing --ignore=tests/integration --ignore=tests/stress --ignore=tests/eval
+test-cov: ## Gateway con cobertura de código (HTML + terminal)
+	$(DC) exec gateway pytest tests/ -v --cov=src --cov-report=term-missing --cov-report=html:/tmp/htmlcov \
+		$(IGNORE_INT)
+	@echo "\nCobertura HTML en /tmp/htmlcov (dentro del container)"
+
+test-all: test test-integration test-stress ## Todo: unit + integration + stress (requiere make up)
 
 # ── Scraper ──────────────────────────────────────────
 
