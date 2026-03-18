@@ -14,7 +14,7 @@ DC_DEV = docker compose --profile dev
         scrape lint migrate shell-gw shell-db \
         clean nuke \
         git-status git-commit \
-        env-check
+        env-check env-sync
 
 # ── Info ─────────────────────────────────────────────
 
@@ -189,8 +189,11 @@ restart-gateway: ## Restart solo gateway (carga nueva config MCP)
 
 # ── Env ──────────────────────────────────────────────
 
-env-check: ## Verificar que el .env raíz tiene todas las keys necesarias
+env-check: ## Verificar keys en .env.config y .env.secrets
 	@bash scripts/env/check-env.sh
+
+env-sync: ## Agregar keys faltantes a .env.config automáticamente
+	@bash scripts/env/sync-env.sh
 
 # ── Git Global ───────────────────────────────────────
 

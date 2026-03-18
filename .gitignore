@@ -1,4 +1,12 @@
+# Credenciales — NUNCA commitear
 .env
+.env.*
+.env.secrets
+.env.config
+!.env.example
+!.env.*.example
+!.env.secrets.example
+!.env.config.example
 .DS_Store
 *.log
 

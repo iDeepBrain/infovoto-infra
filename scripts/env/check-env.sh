@@ -9,20 +9,20 @@
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "$0")/../../../.." && pwd)"
-ENV_FILE="${1:-$ROOT/.env}"
+ENV_FILE="${1:-$ROOT/.env.config}"
 
 RED='\033[0;31m'; YEL='\033[1;33m'; GRN='\033[0;32m'; BLU='\033[0;34m'; NC='\033[0m'
 
 echo ""
 echo -e "${BLU}══════════════════════════════════════════${NC}"
-echo -e "${BLU}  InfoVoto — verificación de .env${NC}"
+echo -e "${BLU}  InfoVoto — verificación de .env.config${NC}"
 echo -e "${BLU}══════════════════════════════════════════${NC}"
 echo -e "  Verificando: ${ENV_FILE}"
 echo ""
 
 if [[ ! -f "$ENV_FILE" ]]; then
     echo -e "${RED}✗ No existe: $ENV_FILE${NC}"
-    echo -e "  Crea uno con: cp infovoto-infra/.env.example $(dirname "$ENV_FILE")/.env"
+    echo -e "  Crea uno con: cp .env.config.example $(dirname "$ENV_FILE")/.env.config"
     exit 1
 fi
 
@@ -34,10 +34,11 @@ extract_keys() {
 ENV_KEYS=$(extract_keys "$ENV_FILE")
 
 EXAMPLES=(
-    "$ROOT/infovoto-infra/.env.example"
-    "$ROOT/infovoto-gateway/.env.example"
-    "$ROOT/infovoto-mcp/.env.example"
-    "$ROOT/infovoto-scraper/.env.example"
+    "$ROOT/.env.config.example"
+    "$ROOT/infovoto-infra/.env.config.example"
+    "$ROOT/infovoto-gateway/.env.config.example"
+    "$ROOT/infovoto-mcp/.env.config.example"
+    "$ROOT/infovoto-scraper/.env.config.example"
 )
 
 SEEN=""   # lista de keys ya procesadas (separadas por newline)

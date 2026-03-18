@@ -17,12 +17,14 @@ services:
       dockerfile: Dockerfile
     ports:
       - "2080:8080"
-    env_file: ../.env
+    env_file:
+      - ../.env.secrets
+      - ../.env.config
     environment:
       - DATABASE_URL=postgresql+asyncpg://infovoto:localdev@postgres:5432/infovoto
       - REDIS_URL=redis://redis:6379/0
       - ENVIRONMENT=development
-      # Default: solo demo. Overridear en .env cuando los datos estén cargados.
+      # Default: solo demo. Overridear en .env.config cuando los datos estén cargados.
       # Con datos: MCP_URLS=http://infovoto-mcp:8080/demo,http://infovoto-mcp:8080/planes
       - MCP_URLS=${MCP_URLS:-http://infovoto-mcp:8080/demo}
     depends_on:
@@ -76,7 +78,9 @@ services:
       dockerfile: Dockerfile
     ports:
       - "2900:8080"
-    env_file: ../.env
+    env_file:
+      - ../.env.secrets
+      - ../.env.config
     environment:
       - DATABASE_URL=postgresql+asyncpg://infovoto:localdev@postgres:5432/infovoto
       - ENVIRONMENT=development
@@ -106,7 +110,9 @@ services:
     build:
       context: ../infovoto-scraper
       dockerfile: Dockerfile
-    env_file: ../.env
+    env_file:
+      - ../.env.secrets
+      - ../.env.config
     environment:
       - DATABASE_URL=postgresql+asyncpg://infovoto:localdev@postgres:5432/infovoto
       - ENVIRONMENT=development
