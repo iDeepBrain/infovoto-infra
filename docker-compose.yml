@@ -22,9 +22,9 @@ services:
       - DATABASE_URL=postgresql+asyncpg://infovoto:localdev@postgres:5432/infovoto
       - REDIS_URL=redis://redis:6379/0
       - ENVIRONMENT=development
-      # MCPs activos. Agregar /planes cuando SC-P1 (OCR notebooks) esté completo.
-      # Para demo sin datos: usar solo /demo
-      - MCP_URLS=http://infovoto-mcp:8080/demo,http://infovoto-mcp:8080/planes
+      # Default: solo demo. Overridear en .env cuando los datos estén cargados.
+      # Con datos: MCP_URLS=http://infovoto-mcp:8080/demo,http://infovoto-mcp:8080/planes
+      - MCP_URLS=${MCP_URLS:-http://infovoto-mcp:8080/demo}
     depends_on:
       postgres:
         condition: service_healthy
