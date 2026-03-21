@@ -1,7 +1,7 @@
 # ─────────────────────────────────────────────────────
 # InfoVoto Perú 2026 — Makefile
 # ─────────────────────────────────────────────────────
-# Puertos: gateway=2080 web=2300 mcp=2900 postgres=2432 redis=2379
+# Puertos: gateway=2080 web=2300 mcp=2900 postgres=2432 redis=2379 metabase=2010
 
 DC = docker compose
 DC_SCRAPER = docker compose --profile scraper
@@ -24,6 +24,8 @@ DC_EVAL = docker compose --profile eval
 help: ## Mostrar esta ayuda
 	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | \
 		awk 'BEGIN {FS = ":.*?## "}; {printf "  \033[36m%-16s\033[0m %s\n", $$1, $$2}'
+
+.PHONY: metabase-up metabase-setup metabase-shell metabase-logs
 
 # ── Build & Run ──────────────────────────────────────
 
@@ -185,7 +187,8 @@ health: ## Check health de todos los servicios (Docker healthcheck + HTTP)
 	echo "MCPs:     $$(_http http://localhost:2900/health) [docker: $$(_hc infovoto-mcp)]"; \
 	echo "Web:      $$(_http http://localhost:2300/) [docker: $$(_hc web)]"; \
 	echo "Postgres: $$(docker compose exec postgres pg_isready -U infovoto > /dev/null 2>&1 && echo 'OK' || echo 'DOWN') [docker: $$(_hc postgres)]"; \
-	echo "Redis:    $$(docker compose exec redis redis-cli ping 2>/dev/null || echo 'DOWN') [docker: $$(_hc redis)]"
+	echo "Redis:    $$(docker compose exec redis redis-cli ping 2>/dev/null || echo 'DOWN') [docker: $$(_hc redis)]"; \
+	echo "Metabase: $$(_http http://localhost:2010/api/health) [docker: $$(_hc metabase)]"
 
 logs-web: ## Ver logs del web frontend
 	$(DC) logs -f web
@@ -195,6 +198,21 @@ logs-mcp: ## Ver logs de infovoto-mcp
 
 restart-gateway: ## Restart solo gateway (carga nueva config MCP)
 	$(DC) restart gateway
+
+# ── Metabase ──────────────────────────────────────────
+
+metabase-up: ## Iniciar Metabase (dashboard de analytics)
+	$(DC) up -d metabase
+	@echo "\n  Metabase: http://localhost:2010\n"
+
+metabase-setup: ## Configurar Metabase automáticamente (requiere que esté corriendo)
+	@bash scripts/metabase/setup.sh
+
+metabase-shell: ## Abrir shell interactivo en Metabase
+	$(DC) exec metabase bash
+
+metabase-logs: ## Ver logs de Metabase
+	$(DC) logs -f metabase
 
 # ── Env ──────────────────────────────────────────────
 
