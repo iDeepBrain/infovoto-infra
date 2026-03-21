@@ -1,0 +1,61 @@
+gantt
+    title Budget 5.0s — Escenarios de timeout
+    dateFormat X
+    axisFormat %Ls
+
+    section A Cache hit
+    Redis cache hit  :done, a1, 0, 1
+    Respond          :crit, a2, 1, 2
+
+    section B Texto directo
+    Redis            :done, b0, 0, 2
+    LLM1 700ms       :active, b1, 2, 702
+    Filter + save    :done, b2, 702, 710
+    Sobrante 4.3s    :b3, 710, 5000
+
+    section C 1 round happy
+    Redis            :done, c0, 0, 2
+    LLM1 700ms       :active, c1, 2, 702
+    MCP 100ms        :crit, c2, 702, 802
+    LLM2 900ms       :active, c3, 802, 1702
+    Save             :done, c4, 1702, 1710
+    Sobrante 3.3s    :c5, 1710, 5000
+
+    section D 2 rounds happy
+    Redis            :done, d0, 0, 2
+    LLM1 700ms       :active, d1, 2, 702
+    MCP1 100ms       :crit, d2, 702, 802
+    LLM2 700ms       :active, d3, 802, 1502
+    MCP2 100ms       :crit, d4, 1502, 1602
+    LLM3 900ms       :active, d5, 1602, 2502
+    Sobrante 2.5s    :d6, 2502, 5000
+
+    section E LLM1 timeout + retry OK
+    Redis            :done, e0, 0, 2
+    LLM1 TIMEOUT 3s  :crit, e1, 2, 3002
+    RETRY 800ms      :active, e2, 3002, 3802
+    texto directo    :done, e3, 3802, 3810
+    Sobrante 1.2s    :e4, 3810, 5000
+
+    section F Error + retry + full flow
+    Redis            :done, f0, 0, 2
+    LLM1 ERROR 50ms  :crit, f1, 2, 52
+    RETRY 700ms      :active, f2, 52, 752
+    MCP 100ms        :crit, f3, 752, 852
+    LLM2 900ms       :active, f4, 852, 1752
+    Sobrante 3.2s    :f5, 1752, 5000
+
+    section G Worst case p99
+    Redis            :done, g0, 0, 2
+    LLM1 1500ms      :active, g1, 2, 1502
+    MCP1 200ms       :crit, g2, 1502, 1702
+    LLM2 1500ms      :active, g3, 1702, 3202
+    MCP2 200ms       :crit, g4, 3202, 3402
+    LLM3 1500ms      :active, g5, 3402, 4902
+    Margin 100ms     :g6, 4902, 5000
+
+    section H Double timeout FAIL
+    Redis            :done, h0, 0, 2
+    LLM1 TIMEOUT 3s  :crit, h1, 2, 3002
+    RETRY TIMEOUT    :crit, h2, 3002, 4702
+    Fallback msg     :done, h3, 4702, 5000

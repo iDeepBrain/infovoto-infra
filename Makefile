@@ -71,7 +71,7 @@ ps: ## Estado de servicios
 # test-integration → flujo completo gateway↔mcp (requiere make up)
 # test-all      → unit + integration (requiere make up)
 
-IGNORE_INT = --ignore=tests/integration --ignore=tests/stress --ignore=tests/eval
+IGNORE_INT = --ignore=tests/integration --ignore=tests/stress --ignore=tests/eval --ignore=tests/reality
 
 test: ## Unit tests: gateway + mcp (rápido, requiere make up)
 	@echo "\n\033[1m[1/2] Gateway unit tests\033[0m"
@@ -98,6 +98,7 @@ test-integration: ## Flujo completo: auth → chat → MCP demo → respuesta (r
 
 test-stress: ## Carga concurrente N usuarios (requiere make up, STRESS_USERS=10 STRESS_REQUESTS=30)
 	$(DC) exec -e STRESS_USERS=$(or $(USERS),10) -e STRESS_REQUESTS=$(or $(REQ),30) \
+		-e GATEWAY_URL=http://localhost:8080 -e MCP_URL=http://infovoto-mcp:8080 \
 		gateway pytest tests/stress/ -v --tb=short -s
 
 test-eval: ## Pipeline completo eval: 105 preguntas + LLM-judge + CSV + gráficos (requiere make up + GOOGLE_API_KEY)

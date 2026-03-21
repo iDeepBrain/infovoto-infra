@@ -1,0 +1,83 @@
+flowchart TD
+    START(["🌐 Request /api/chat"]) --> BUDGET["⏱️ budget = TimeBudget 5.0s"]
+
+    BUDGET --> GUARD{"🛡️ Guardrails"}
+    GUARD -->|blocked| RET_BLOCK(["❌ 'Reformula tu pregunta'"])
+    GUARD -->|ok| CACHE
+
+    CACHE["🔴 Redis cache<br/>timeout_for 0.5s, reserve 0.1<br/>avg ~1ms"]
+    CACHE -->|"✅ hit"| RET_CACHE(["✅ Cached reply ~1ms"])
+    CACHE -->|"miss / fail"| HIST
+
+    HIST["🔴 Redis history<br/>timeout_for 0.5s, reserve 0.1<br/>fail → history = empty"] --> LLM1
+
+    LLM1["🤖 LLM call 1<br/>timeout_for 3.0s, reserve 1.0<br/>avg 700ms p99 1.5s"]
+    LLM1 -->|"✅ OK 0.5-1.5s"| DECISION1
+    LLM1 -->|"⏰ Timeout 3.0s"| T1{"remaining > 2.0s?"}
+    LLM1 -->|"💥 Error ~50ms"| E1{"remaining > 2.0s?"}
+
+    T1 -->|"sí"| RETRY1["🔄 RETRY LLM1<br/>timeout_for 3.0s, reserve 0.3<br/>= min 3.0, remaining−0.3"]
+    T1 -->|"no"| RET_SLOW(["⏰ 'Demora con IA'"])
+
+    E1 -->|"sí ~4.9s left"| RETRY1
+    E1 -->|"no"| RET_ERR(["💥 'Problemas técnicos'"])
+
+    RETRY1 -->|"✅ OK"| DECISION1
+    RETRY1 -->|"❌ Fail"| RET_SLOW
+
+    DECISION1{"¿Tool call?"}
+    DECISION1 -->|"No → texto"| FILTER
+    DECISION1 -->|"Sí"| AFFORD_R0{"remaining > 1.0s?"}
+
+    AFFORD_R0 -->|"no"| PARTIAL["Usar texto parcial LLM1"]
+    AFFORD_R0 -->|"sí"| MCP1
+
+    MCP1["🔧 MCP tool call<br/>timeout_for 2.0s, reserve 1.0<br/>avg 100ms"]
+    MCP1 -->|"✅ OK ~100ms"| LLM2
+    MCP1 -->|"⏰ Timeout / 💥 Error"| MCP1F["tool_result = error msg"] --> LLM2
+
+    LLM2["🤖 LLM follow-up<br/>timeout_for 3.0s, reserve 0.3<br/>= min 3.0, remaining−0.3"]
+    LLM2 -->|"✅ texto final"| FILTER
+    LLM2 -->|"✅ otra tool call"| AFFORD_R1{"remaining > 1.0s?"}
+    LLM2 -->|"⏰ / Budget exhausted"| PARTIAL2["Usar texto parcial"]
+
+    AFFORD_R1 -->|"sí → Round 2"| MCP2["🔧 MCP call 2"] --> LLM3["🤖 LLM call 3<br/>timeout_for 3.0s, reserve 0.3"]
+    AFFORD_R1 -->|"no → Force text"| FORCE{"remaining > 1.0s?"}
+
+    LLM3 -->|"✅ OK"| FILTER
+    LLM3 -->|"❌ Fail"| PARTIAL2
+
+    FORCE -->|"sí"| FORCE_LLM["🤖 LLM tools=none<br/>timeout_for 3.0s, reserve 0.3"]
+    FORCE -->|"no"| PARTIAL2
+    FORCE_LLM -->|"✅"| FILTER
+    FORCE_LLM -->|"❌"| PARTIAL2
+
+    PARTIAL --> FILTER
+    PARTIAL2 --> FILTER
+
+    FILTER["📝 filter_output + disclaimers"] --> SAVE_CHECK{"remaining > 0.3s?"}
+
+    SAVE_CHECK -->|"sí"| SAVE["🔴 Redis save ×3<br/>best-effort ~3ms"]
+    SAVE_CHECK -->|"no"| SKIP["⏩ Skip saves"]
+    SAVE --> RET_OK
+    SKIP --> RET_OK
+
+    RET_OK(["✅ ProcessResponse"])
+
+    style BUDGET fill:#1a1a2e,color:#e0e0e0,stroke:#e0e0e0
+    style LLM1 fill:#16213e,color:#e0e0e0,stroke:#4a90d9
+    style LLM2 fill:#16213e,color:#e0e0e0,stroke:#4a90d9
+    style LLM3 fill:#16213e,color:#e0e0e0,stroke:#4a90d9
+    style RETRY1 fill:#0f3460,color:#e0e0e0,stroke:#4a90d9
+    style FORCE_LLM fill:#0f3460,color:#e0e0e0,stroke:#4a90d9
+    style MCP1 fill:#533483,color:#e0e0e0,stroke:#9b59b6
+    style MCP2 fill:#533483,color:#e0e0e0,stroke:#9b59b6
+    style CACHE fill:#7b2d3b,color:#e0e0e0,stroke:#e94560
+    style HIST fill:#7b2d3b,color:#e0e0e0,stroke:#e94560
+    style SAVE fill:#7b2d3b,color:#e0e0e0,stroke:#e94560
+    style RET_OK fill:#2d6a4f,color:#e0e0e0,stroke:#52b788
+    style RET_CACHE fill:#2d6a4f,color:#e0e0e0,stroke:#52b788
+    style RET_SLOW fill:#6b0000,color:#e0e0e0,stroke:#d00000
+    style RET_ERR fill:#6b0000,color:#e0e0e0,stroke:#d00000
+    style RET_BLOCK fill:#6b0000,color:#e0e0e0,stroke:#d00000
+    style FILTER fill:#374151,color:#e0e0e0,stroke:#9ca3af

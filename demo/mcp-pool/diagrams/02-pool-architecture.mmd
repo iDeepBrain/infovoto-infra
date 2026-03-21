@@ -1,0 +1,66 @@
+flowchart TB
+    subgraph STARTUP["🚀 STARTUP — lifespan"]
+        direction TB
+        REG["MCP Registry<br/>GET /metadata ×5"] --> CREATE["Create MultiServerPool"]
+        CREATE --> P1["ResilientPool<br/>/perfiles<br/>10 httpx clients"]
+        CREATE --> P2["ResilientPool<br/>/planes<br/>10 httpx clients"]
+        CREATE --> P3["ResilientPool<br/>/logistica<br/>10 httpx clients"]
+        CREATE --> P4["ResilientPool<br/>/fiscalizacion<br/>10 httpx clients"]
+        CREATE --> P5["ResilientPool<br/>/financiamiento<br/>10 httpx clients"]
+        P1 & P2 & P3 & P4 & P5 --> TMAP["tool_map<br/>buscar_candidato → P1<br/>buscar_propuesta → P2<br/>consultar_local → P3<br/>...12 tools mapped"]
+        P1 & P2 & P3 & P4 & P5 --> BG["🔄 Background refresh<br/>every 30s per pool<br/>GET /health"]
+    end
+
+    subgraph HOTPATH["⚡ HOT PATH — per request"]
+        direction TB
+        CALL["agent calls<br/>pool.call_tool name, args"]
+        CALL --> ROUTE{"tool_map<br/>lookup O 1"}
+        ROUTE --> ACQ["queue.get<br/>~0μs acquire"]
+        ACQ --> POST["HTTP POST /tools/call<br/>timeout = budget dynamic<br/>avg 100ms"]
+        POST -->|"✅ OK"| REL["queue.put<br/>release ~0μs"]
+        POST -->|"💥 Fail"| RECONN["Reconnect<br/>close old + create new<br/>in-place swap"]
+        RECONN --> RETRY_POST["Retry POST<br/>attempt 2"]
+        RETRY_POST -->|"✅ OK"| REL
+        RETRY_POST -->|"💥 Fail"| ERR["RuntimeError<br/>propagate to agent"]
+        ERR --> REL
+    end
+
+    subgraph POOL_INTERNALS["📦 Pool Internals — per server"]
+        direction LR
+        Q["asyncio.Queue maxsize=10"]
+        C1["conn-0<br/>httpx.AsyncClient"] -.-> Q
+        C2["conn-1"] -.-> Q
+        C3["conn-2"] -.-> Q
+        CD["... conn-9"] -.-> Q
+        Q -->|"acquire ~0μs"| WORKER["Worker uses conn"]
+        WORKER -->|"release ~0μs"| Q
+    end
+
+    subgraph BACKGROUND["🔄 Background — refresh loop"]
+        direction TB
+        SLEEP["sleep refresh_interval 30s"]
+        SLEEP --> PICK["queue.get_nowait<br/>non-blocking"]
+        PICK -->|"got conn"| HEALTH["GET /health<br/>timeout 5s"]
+        PICK -->|"queue empty"| SKIP["refresh_skipped++"]
+        HEALTH -->|"200 OK"| ALIVE["conn.alive = True"]
+        HEALTH -->|"fail"| RECON_BG["Reconnect<br/>timeout 3s"]
+        ALIVE --> PUT["queue.put conn"]
+        RECON_BG --> PUT
+        SKIP --> SLEEP
+        PUT --> SLEEP
+    end
+
+    STARTUP ~~~ HOTPATH
+    HOTPATH ~~~ POOL_INTERNALS
+    POOL_INTERNALS ~~~ BACKGROUND
+
+    style STARTUP fill:#1a1a2e,color:#e0e0e0,stroke:#4a90d9
+    style HOTPATH fill:#0f3460,color:#e0e0e0,stroke:#52b788
+    style POOL_INTERNALS fill:#2d1b4e,color:#e0e0e0,stroke:#9b59b6
+    style BACKGROUND fill:#1b3a2d,color:#e0e0e0,stroke:#52b788
+    style CALL fill:#16213e,color:#e0e0e0
+    style POST fill:#16213e,color:#e0e0e0
+    style ACQ fill:#2d6a4f,color:#e0e0e0
+    style REL fill:#2d6a4f,color:#e0e0e0
+    style RECONN fill:#6b0000,color:#e0e0e0
+    style ERR fill:#6b0000,color:#e0e0e0
