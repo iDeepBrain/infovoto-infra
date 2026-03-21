@@ -51,11 +51,12 @@ services:
     build:
       context: ../infovoto-web
       dockerfile: Dockerfile
+      args:
+        - NEXT_PUBLIC_GATEWAY_URL=http://localhost:2080
     ports:
       - "2300:3000"
     environment:
       - NEXTAUTH_URL=http://localhost:2300
-      - NEXT_PUBLIC_GATEWAY_URL=http://gateway:8080
       - HOSTNAME=0.0.0.0
     env_file: ../infovoto-web/.env.local
     depends_on:
