@@ -35,16 +35,18 @@ services:
     volumes:
       - ../infovoto-gateway/src:/app/src
       - ../infovoto-gateway/tests:/app/tests
+      - ../infovoto-gateway/scripts:/app/scripts
       - ../infovoto-gateway/migrations:/app/migrations
       - ../infovoto-gateway/alembic.ini:/app/alembic.ini
     networks:
       - infovoto
     healthcheck:
-      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8080/health')"]
+      # /tmp/healthy solo existe si startup.sh verificó MCPs + smoke test
+      test: ["CMD", "test", "-f", "/tmp/healthy"]
       interval: 10s
       timeout: 5s
-      retries: 5
-      start_period: 15s
+      retries: 10
+      start_period: 90s
     restart: unless-stopped
 
   web:
@@ -97,16 +99,18 @@ services:
     volumes:
       - ../infovoto-mcp/src:/app/src
       - ../infovoto-mcp/tests:/app/tests
+      - ../infovoto-mcp/scripts:/app/scripts
       # Datos procesados por el scraper (ChromaDB planes_gobierno, etc.)
       - ../infovoto-scraper/data:/app/scraper_data
     networks:
       - infovoto
     healthcheck:
-      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8080/health')"]
+      # /tmp/healthy solo existe si startup.sh pasó los tests unitarios
+      test: ["CMD", "test", "-f", "/tmp/healthy"]
       interval: 10s
       timeout: 5s
-      retries: 5
-      start_period: 15s
+      retries: 10
+      start_period: 60s
     restart: unless-stopped
 
   # ── Scraper Job (manual trigger) ───────────────────
