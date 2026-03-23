@@ -91,8 +91,8 @@ services:
       # ChromaDB lee desde la misma carpeta donde el scraper escribe
       - CHROMA_PERSIST_DIR=/app/scraper_data/chroma
       - VECTOR_STORE=chroma
-      # MCP flags — fiscalizacion deshabilitado (sin data)
-      - MCP_FISCALIZACION_ENABLED=false
+      # MCP flags
+      - MCP_FISCALIZACION_ENABLED=true
     depends_on:
       postgres:
         condition: service_healthy
