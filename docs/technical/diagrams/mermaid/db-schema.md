@@ -1,0 +1,127 @@
+# Database Schema — InfoVoto
+
+```mermaid
+erDiagram
+    %% ══════ MCP Tables (read-only, populated by scraper) ══════
+    partidos ||--o{ candidatos : "1:N"
+    partidos ||--o{ finanzas_claridad : "1:N"
+    partidos ||--o{ expedientes : "1:N"
+    candidatos ||--o{ educacion : "1:N"
+    candidatos ||--o{ experiencia_laboral : "1:N"
+    candidatos ||--o{ antecedentes_penales : "1:N"
+    candidatos ||--o{ sentencias_obligaciones : "1:N"
+    candidatos ||--o{ expedientes : "1:N"
+
+    partidos {
+        int id PK
+        string nombre UK
+        string sigla
+        string logo_url
+        string plan_pdf_path
+    }
+
+    candidatos {
+        string dni PK
+        string nombres
+        string apellidos
+        string cargo
+        string region
+        int partido_id FK
+        float ingreso_total
+        int bienes_inmuebles_count
+    }
+
+    educacion {
+        int id PK
+        string candidato_dni FK
+        string nivel
+        string institucion
+        string carrera
+        string grado
+    }
+
+    experiencia_laboral {
+        int id PK
+        string candidato_dni FK
+        string institucion
+        string cargo
+        string sector
+    }
+
+    antecedentes_penales {
+        int id PK
+        string candidato_dni FK
+        string tipo
+        string descripcion
+        string fallo
+        string estado
+    }
+
+    sentencias_obligaciones {
+        int id PK
+        string candidato_dni FK
+        string materia
+        float monto
+    }
+
+    expedientes {
+        string numero PK
+        string candidato_dni FK
+        int partido_id FK
+        string tipo
+        string estado
+        string descripcion
+    }
+
+    locales_votacion {
+        string dni_elector PK
+        string region
+        string distrito
+        string nombre_local
+        string direccion
+        int numero_mesa
+        boolean es_titular_mesa
+    }
+
+    finanzas_claridad {
+        int id PK
+        int partido_id FK
+        string tipo
+        float monto_soles
+        string donante
+        string concepto
+    }
+
+    %% ══════ Gateway Tables (read-write) ══════
+    user_events {
+        int id PK
+        string user_id
+        string event_type
+        string endpoint
+        int status
+        timestamp timestamp
+        int duration_ms
+    }
+
+    message_traces {
+        bigint id PK
+        string user_id
+        string channel
+        timestamp created_at
+        int total_ms
+        int router_ms
+        int mcp_ms
+        int synth_ms
+        text[] tools_used
+        int tokens_input
+        int tokens_output
+        string response_zone
+    }
+
+    election_info {
+        uuid id PK
+        string key UK
+        string value
+        string description
+    }
+```
