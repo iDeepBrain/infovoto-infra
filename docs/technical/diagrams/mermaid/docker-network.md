@@ -1,0 +1,43 @@
+# Docker Network — Conexiones internas
+
+```mermaid
+flowchart TB
+    subgraph "Exterior (browser/user)"
+        BROWSER["Browser<br/>localhost:2300"]
+        CURL["curl/Gradio<br/>localhost:2080"]
+    end
+
+    subgraph "Docker Network (infovoto)"
+        subgraph "Frontend"
+            WEB["web:3000<br/>Next.js 14<br/>↕ 2300"]
+        end
+
+        subgraph "Backend"
+            GW["gateway:8080<br/>FastAPI + Agent<br/>↕ 2080"]
+        end
+
+        subgraph "MCPs"
+            MCP["infovoto-mcp:8080<br/>6 MCPs, 26 tools<br/>↕ 2900"]
+        end
+
+        subgraph "Data"
+            PG["postgres:5432<br/>7146 candidatos<br/>↕ 2432"]
+            RD["redis:6379<br/>Cache + Session<br/>↕ 2379"]
+        end
+    end
+
+    BROWSER -->|":2300 → :3000"| WEB
+    CURL -->|":2080 → :8080"| GW
+
+    WEB -->|"http://gateway:8080<br/>Bearer + X-API-Key"| GW
+    GW -->|"http://infovoto-mcp:8080<br/>60 persistent conns"| MCP
+    GW -->|"redis://redis:6379"| RD
+    GW -->|"postgresql://postgres:5432"| PG
+    MCP -->|"postgresql://postgres:5432"| PG
+
+    style WEB fill:#69f
+    style GW fill:#f96
+    style MCP fill:#9c6
+    style PG fill:#fc9
+    style RD fill:#f9c
+```
