@@ -1,6 +1,3 @@
-# API Key — Flujo de la key (nunca visible al browser)
-
-```mermaid
 sequenceDiagram
     participant ENV as .env.secrets
     participant DC as docker-compose
@@ -28,4 +25,3 @@ sequenceDiagram
     GW->>GW: Validate both → AuthUser
     GW-->>WEB: {reply}
     WEB-->>BR: {reply}
-```

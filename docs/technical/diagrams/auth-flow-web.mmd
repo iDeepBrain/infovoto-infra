@@ -1,6 +1,3 @@
-# Auth Flow — Web (Browser → Next.js → Gateway)
-
-```mermaid
 sequenceDiagram
     participant B as Browser
     participant N as Next.js Server
@@ -29,4 +26,3 @@ sequenceDiagram
     G->>G: Process message (LLM + MCP)
     G-->>N: {reply, sources}
     N-->>B: {reply, sources}
-```

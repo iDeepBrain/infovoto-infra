@@ -1,6 +1,3 @@
-# Storage Map — Local vs Producción
-
-```mermaid
 flowchart LR
     subgraph "LOCAL (Docker Compose)"
         LP[(PostgreSQL<br/>localhost:2432<br/>pool_size=5)]
@@ -20,7 +17,7 @@ flowchart LR
 
         REDIS_DATA["Redis:<br/>• session:{user_id} (history)<br/>• cache:query:{hash} (responses)<br/>• entity:{user_id} (context)<br/>• ratelimit:* (throttle)"]
 
-        CHROMA_DATA["ChromaDB:<br/>• planes_gobierno (ONNX 384d)<br/>• resoluciones<br/>• logistica_electoral<br/>• financiamiento_electoral<br/>• perfiles_candidatos<br/>• proceso_electoral"]
+        CHROMA_DATA["ChromaDB (activos):<br/>• planes_gobierno (ONNX 384d)<br/>• resoluciones<br/>• logistica_electoral<br/>• perfiles_candidatos<br/>• proceso_electoral<br/>⚠ financiamiento_electoral (backlog)"]
     end
 
     LP -.->|"misma data"| PP
@@ -34,4 +31,3 @@ flowchart LR
     style PP fill:#f96
     style PR fill:#9cf
     style PC fill:#cf9
-```

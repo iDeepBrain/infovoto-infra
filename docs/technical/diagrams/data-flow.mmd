@@ -1,6 +1,3 @@
-# Data Flow — Write Paths
-
-```mermaid
 flowchart TB
     subgraph "Write Paths"
         direction TB
@@ -44,14 +41,13 @@ flowchart TB
             C1[planes_gobierno_local]
             C2[resoluciones]
             C3[logistica_electoral]
-            C4[financiamiento_electoral]
-            C5[perfiles_candidatos]
-            C6[proceso_electoral]
+            C4[perfiles_candidatos]
+            C5[proceso_electoral]
         end
     end
 
     SCR -->|"batch write"| T1 & T2 & T3 & T4 & T5 & T6 & T7 & T8
-    SCR -->|"batch index"| C1 & C2 & C3 & C4 & C5 & C6
+    SCR -->|"batch index"| C1 & C2 & C3 & C4 & C5
 
     CHAT -->|"fire-and-forget"| T9
     CHAT -->|"fire-and-forget"| T10
@@ -64,4 +60,3 @@ flowchart TB
     style T10 fill:#f96,stroke:#333
     style R1 fill:#9cf,stroke:#333
     style C1 fill:#cf9,stroke:#333
-```

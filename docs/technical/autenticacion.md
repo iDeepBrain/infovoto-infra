@@ -127,7 +127,8 @@ async def get_current_user(api_key = Depends(_api_key_header), ...):
 
 | Tipo | Límite | Ventana |
 |------|:------:|:-------:|
-| Cualquier IP | 60 req | 1 min |
+| IP anónima | 60 req | 1 min |
+| IP autenticada | 300 req | 1 min |
 
 **Archivo:** `src/gateway/middleware/rate_limiter.py`
 **Método:** Redis sliding window (sorted sets)

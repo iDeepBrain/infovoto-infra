@@ -1,0 +1,12 @@
+# Override for testing with Supabase (production DB) locally.
+# Usage: docker compose -f docker-compose.yml -f docker-compose.supabase.yml up gateway infovoto-mcp
+# Note: postgres/redis still run locally, only DATABASE_URL points to Supabase.
+
+services:
+  gateway:
+    environment:
+      - DATABASE_URL=${DATABASE_URL_SUPABASE}
+
+  infovoto-mcp:
+    environment:
+      - DATABASE_URL=${DATABASE_URL_SUPABASE}

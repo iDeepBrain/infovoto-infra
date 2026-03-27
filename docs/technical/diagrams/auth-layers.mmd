@@ -1,6 +1,3 @@
-# Capas de Seguridad
-
-```mermaid
 flowchart LR
     REQ[Request] --> IP[Capa 1<br/>IP Rate Limit<br/>60/min]
     IP --> AUTH[Capa 2<br/>Auth<br/>API Key / OAuth / HMAC]
@@ -18,4 +15,3 @@ flowchart LR
     style INPUT fill:#cf9
     style AGENT fill:#9f9
     style OUTPUT fill:#9cf
-```

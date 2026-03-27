@@ -1,6 +1,3 @@
-# Docker Network — Conexiones internas
-
-```mermaid
 flowchart TB
     subgraph "Exterior (browser/user)"
         BROWSER["Browser<br/>localhost:2300"]
@@ -16,13 +13,14 @@ flowchart TB
             GW["gateway:8080<br/>FastAPI + Agent<br/>↕ 2080"]
         end
 
-        subgraph "MCPs"
-            MCP["infovoto-mcp:8080<br/>6 MCPs, 26 tools<br/>↕ 2900"]
+        subgraph "MCPs (5 activos)"
+            MCP["infovoto-mcp:8080<br/>3 activos + 2 backlog<br/>↕ 2900"]
         end
 
         subgraph "Data"
-            PG["postgres:5432<br/>7146 candidatos<br/>↕ 2432"]
-            RD["redis:6379<br/>Cache + Session<br/>↕ 2379"]
+            PG["postgres:5432<br/>7,146 candidatos<br/>↕ 2432"]
+            RD["redis:6379<br/>Cache + Rate Limit<br/>↕ 2379"]
+            CH["ChromaDB<br/>ONNX embeddings<br/>en container MCP"]
         end
     end
 
@@ -34,10 +32,11 @@ flowchart TB
     GW -->|"redis://redis:6379"| RD
     GW -->|"postgresql://postgres:5432"| PG
     MCP -->|"postgresql://postgres:5432"| PG
+    MCP -->|"vector search"| CH
 
     style WEB fill:#69f
     style GW fill:#f96
     style MCP fill:#9c6
     style PG fill:#fc9
     style RD fill:#f9c
-```
+    style CH fill:#06b6d4,color:#fff
