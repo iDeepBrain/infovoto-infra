@@ -223,6 +223,14 @@ env-check: ## Verificar keys en .env.config y .env.secrets
 env-sync: ## Agregar keys faltantes a .env.config automáticamente
 	@bash scripts/env/sync-env.sh
 
+# ── GCS Assets ───────────────────────────────────────
+
+gcs-upload-mmdb: ## Subir GeoLite2-City.mmdb a GCS (pre-requisito Cloud Build dev)
+	gsutil cp ../infovoto-gateway/src/data/GeoLite2-City.mmdb \
+	  gs://proyectosia-423918_cloudbuild/assets/GeoLite2-City.mmdb
+	@echo "GeoLite2-City.mmdb subido a GCS"
+	@echo "Verificar: gsutil ls -l gs://proyectosia-423918.appspot.com/assets/"
+
 # ── Git Global ───────────────────────────────────────
 
 git-status: ## Ver estado de todos los repos
