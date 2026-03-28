@@ -91,8 +91,10 @@ services:
       # ChromaDB lee desde la misma carpeta donde el scraper escribe
       - CHROMA_PERSIST_DIR=/app/scraper_data/chroma
       - VECTOR_STORE=chroma
+      - SCRAPER_DATA_DIR=/app/scraper_data
       # MCP flags
       - MCP_FISCALIZACION_ENABLED=true
+      - MCP_DEBATES_ENABLED=true
     depends_on:
       postgres:
         condition: service_healthy
