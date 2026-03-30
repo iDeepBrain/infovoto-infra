@@ -58,6 +58,7 @@ services:
       - "2300:3000"
     environment:
       - NEXTAUTH_URL=http://localhost:2300
+      - NEXTAUTH_URL_INTERNAL=http://localhost:3000
       - HOSTNAME=0.0.0.0
       - GATEWAY_URL=http://gateway:8080
     env_file: ../infovoto-web/.env.local
@@ -112,7 +113,7 @@ services:
       interval: 10s
       timeout: 5s
       retries: 10
-      start_period: 60s
+      start_period: 300s
     restart: unless-stopped
 
   # ── Scraper Job (manual trigger) ───────────────────
