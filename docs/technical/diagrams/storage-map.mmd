@@ -1,0 +1,33 @@
+flowchart LR
+    subgraph "LOCAL (Docker Compose)"
+        LP[(PostgreSQL<br/>localhost:2432<br/>pool_size=5)]
+        LR[(Redis<br/>localhost:2379)]
+        LC[(ChromaDB<br/>./data/chroma/)]
+    end
+
+    subgraph "PRODUCCIÓN (Cloud Run)"
+        PP[(Supabase PostgreSQL<br/>db.xxx.supabase.co:6543<br/>pgbouncer + NullPool + SSL)]
+        PR[(Upstash Redis<br/>xxx.upstash.io:6379<br/>TLS)]
+        PC[(ChromaDB<br/>embebido en container MCP<br/>precargado en build)]
+    end
+
+    subgraph "Datos por Storage"
+        direction TB
+        PG_DATA["PostgreSQL:<br/>• 9 tablas MCP (7,146 candidatos)<br/>• user_events (analytics)<br/>• message_traces (métricas)<br/>• election_info (config)"]
+
+        REDIS_DATA["Redis:<br/>• session:{user_id} (history)<br/>• cache:query:{hash} (responses)<br/>• entity:{user_id} (context)<br/>• ratelimit:* (throttle)"]
+
+        CHROMA_DATA["ChromaDB (activos):<br/>• planes_gobierno (ONNX 384d)<br/>• resoluciones<br/>• logistica_electoral<br/>• perfiles_candidatos<br/>• proceso_electoral<br/>⚠ financiamiento_electoral (backlog)"]
+    end
+
+    LP -.->|"misma data"| PP
+    LR -.->|"misma data"| PR
+    LC -.->|"precargado en imagen"| PC
+
+    PG_DATA --- LP
+    REDIS_DATA --- LR
+    CHROMA_DATA --- LC
+
+    style PP fill:#f96
+    style PR fill:#9cf
+    style PC fill:#cf9

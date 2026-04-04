@@ -1,0 +1,60 @@
+graph TB
+    subgraph Usuarios
+        U1[Browser\nUsuario]
+        U2[WhatsApp\nUsuario]
+    end
+
+    subgraph infovoto-web["infovoto-web (Next.js 14)"]
+        WEB[Landing / Chat / Stats\nlocalhost:2300]
+        PROXY[API Routes\nProxy server-side]
+    end
+
+    subgraph infovoto-gateway["infovoto-gateway (FastAPI)"]
+        AUTH[Auth Layer\nGoogle OAuth + API Keys]
+        RATE[Rate Limiter\nIP + User + Token Budget]
+        AGENT[InfoVotoAgent\nGemini 2.0 Flash]
+        SYNTH[Synthesizer\n+ Output Filter]
+    end
+
+    subgraph infovoto-mcp["infovoto-mcp (FastMCP)"]
+        MCP1["/perfiles"]
+        MCP2["/planes"]
+        MCP3["/logistica"]
+        MCP4["/fiscalizacion (backlog)"]
+        MCP5["/financiamiento (backlog)"]
+    end
+
+    subgraph Datos
+        PG[(PostgreSQL\nSupabase prod)]
+        RD[(Redis\nUpstash prod)]
+        CH[(ChromaDB\nEmbeddings)]
+    end
+
+    subgraph Externo
+        GOOGLE[Google OAuth]
+        META[Meta Webhook\nWhatsApp]
+    end
+
+    U1 -->|HTTPS| WEB
+    U2 -->|HTTPS + HMAC| META
+    META -->|POST /webhook| AUTH
+
+    WEB --> PROXY
+    PROXY -->|Bearer + X-API-Key| AUTH
+    AUTH --> RATE
+    RATE --> AGENT
+    AGENT -->|MCP tools| MCP1
+    AGENT -->|MCP tools| MCP2
+    AGENT -->|MCP tools| MCP3
+    AGENT -.->|"MCP tools (backlog)"| MCP4
+    AGENT -.->|"MCP tools (backlog)"| MCP5
+    AGENT --> SYNTH
+
+    MCP1 --> PG
+    MCP2 --> PG
+    MCP3 --> PG
+    MCP2 --> CH
+    RATE --> RD
+    AGENT --> RD
+
+    AUTH -->|validate id_token| GOOGLE
