@@ -37,6 +37,8 @@ services:
       - ../infovoto-gateway/scripts:/app/scripts
       - ../infovoto-gateway/migrations:/app/migrations
       - ../infovoto-gateway/alembic.ini:/app/alembic.ini
+      # ChromaDB perfiles for RAG paralelo
+      - ../infovoto-scraper/data/chroma:/app/src/data/chromadb_perfiles
     networks:
       - infovoto
     healthcheck:
