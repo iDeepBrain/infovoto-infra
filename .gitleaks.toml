@@ -19,6 +19,8 @@ regexes = [
   '''your[-_].*[-_]here''',
   '''placeholder''',
   '''localdev''',
+  '''REPLACE-WITH-YOUR-VALUE''',
+  '''proyectosia-423918''',
 ]
 paths = [
   '''\.env\.example''',
