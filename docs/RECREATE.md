@@ -92,4 +92,4 @@ redeploy `web`.
 | All credentials | GCP Secret Manager (`proyectosia-423918`) | ✅ (after running the backup script) |
 | GeoLite2, ChromaDB index, sprites, debates | GCS buckets | ✅ |
 | Architecture diagrams | `infovoto-docs/assets/diagrams/` | ✅ |
-| Raw editable sprite source frames (488 MB) | local only (`infovoto-web/assets/generated_frames/`) | ⚠️ optional — back up to GCS if you'll re-edit the mascot |
+| Raw editable sprite source frames (488 MB, 1865 files) | GCS `gs://proyectosia-423918_cloudbuild/assets/generated_frames/` | ✅ (to re-edit the mascot: `gsutil -m cp -r gs://proyectosia-423918_cloudbuild/assets/generated_frames .`) |
